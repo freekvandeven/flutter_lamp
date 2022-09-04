@@ -1,52 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends HookWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   static final String _loremText =
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit, '
       'sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  bool _isOn = false;
-  Offset position = Offset.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    // set initial offset to center of screen
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        position = Offset(MediaQuery.of(context).size.width / 2, 0);
-      });
-    });
+  Offset initialPosition(BuildContext context) {
+    return Offset(MediaQuery.of(context).size.width / 2, 0);
   }
 
   @override
   Widget build(BuildContext context) {
+    var lampIsOn = useState(false);
+    var lampPosition = useState(initialPosition(context));
+    var oldLampPosition = useState(initialPosition(context));
+    var newLampPosition = useState(initialPosition(context));
+    var animationController =
+        useAnimationController(duration: const Duration(seconds: 1));
+    animationController.addListener(() {
+      // move the lamp
+      lampPosition.value = Offset.lerp(
+        oldLampPosition.value,
+        newLampPosition.value,
+        animationController.value,
+      )!;
+    });
     var size = MediaQuery.of(context).size;
     var lampWidth = size.height * 0.05;
     var lampHeight = size.height * 0.1;
     return Scaffold(
-      // fill entire screen with lorem ipsum
       backgroundColor: Colors.black,
       body: SafeArea(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          // detect position of tap
           onTapDown: (details) {
-            setState(() {
-              position = details.globalPosition;
-            });
+            newLampPosition.value = details.localPosition;
+            oldLampPosition.value = lampPosition.value;
+            animationController.forward(from: 0);
+          },
+          onDoubleTap: () {
+            newLampPosition.value = initialPosition(context);
+            oldLampPosition.value = lampPosition.value;
+            animationController
+              ..duration = const Duration(milliseconds: 500)
+              ..forward(from: 0);
           },
           child: Stack(
             children: [
               const SizedBox.expand(),
-              if (_isOn) ...[
+              if (lampIsOn.value) ...[
                 ShaderMask(
                   shaderCallback: (rect) {
                     return RadialGradient(
@@ -60,7 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               : size.height) *
                           0.0005,
                     ).createShader(
-                      rect.translate(position.dx, position.dy + lampHeight / 2),
+                      rect.translate(
+                        lampPosition.value.dx,
+                        lampPosition.value.dy + lampHeight / 2,
+                      ),
                     );
                   },
                   child: Text(
@@ -76,23 +83,24 @@ class _HomeScreenState extends State<HomeScreen> {
               CustomPaint(
                 painter: LinePainter(
                   start: Offset(size.width / 2, 0),
-                  end: Offset(position.dx, position.dy + lampHeight / 20),
+                  end: Offset(
+                    lampPosition.value.dx,
+                    lampPosition.value.dy + lampHeight / 20,
+                  ),
                 ),
               ),
               Positioned(
-                left: position.dx - lampWidth / 2,
-                top: position.dy,
+                left: lampPosition.value.dx - lampWidth / 2,
+                top: lampPosition.value.dy,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     GestureDetector(
                       onTap: () {
-                        setState(() {
-                          _isOn = !_isOn;
-                        });
+                        lampIsOn.value = !lampIsOn.value;
                       },
                       child: Image.asset(
-                        _isOn
+                        lampIsOn.value
                             ? 'assets/images/bright_bulb.png'
                             : 'assets/images/bulb.png',
                         width: lampWidth,
