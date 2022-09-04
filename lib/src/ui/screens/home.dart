@@ -34,8 +34,32 @@ class HomeScreen extends HookWidget {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: GestureDetector(
+          // ondrag update the lamp position
+          onPanUpdate: (details) {
+            // if the area is not the lamp area, do nothing
+            if (details.localPosition.dx < lampPosition.value.dx - lampWidth ||
+                details.localPosition.dx > lampPosition.value.dx + lampWidth ||
+                details.localPosition.dy < lampPosition.value.dy - lampHeight ||
+                details.localPosition.dy > lampPosition.value.dy + lampHeight) {
+              return;
+            }
+            var newPosition = lampPosition.value + details.delta;
+            if (newPosition.dy < 0) {
+              newPosition = Offset(newPosition.dx, 0);
+            }
+            if (newPosition.dx < 0) {
+              newPosition = Offset(0, newPosition.dy);
+            }
+            if (newPosition.dx > size.width - lampWidth) {
+              newPosition = Offset(size.width - lampWidth, newPosition.dy);
+            }
+            if (newPosition.dy > size.height - lampHeight) {
+              newPosition = Offset(newPosition.dx, size.height - lampHeight);
+            }
+            lampPosition.value = newPosition;
+          },
           behavior: HitTestBehavior.opaque,
-          onTapDown: (details) {
+          onTapUp: (details) {
             newLampPosition.value = details.localPosition;
             oldLampPosition.value = lampPosition.value;
             animationController.forward(from: 0);
@@ -57,12 +81,12 @@ class HomeScreen extends HookWidget {
                       center: Alignment.topLeft,
                       colors: [
                         const Color.fromARGB(255, 210, 204, 159),
-                        const Color.fromARGB(255, 78, 74, 45).withOpacity(0.1),
+                        const Color.fromARGB(255, 78, 74, 45).withOpacity(0.3),
                       ],
                       radius: (size.width > size.height
                               ? size.width / 5
                               : size.height) *
-                          0.0005,
+                          0.0007,
                     ).createShader(
                       rect.translate(
                         lampPosition.value.dx,
